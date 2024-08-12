@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.6
 
 require (
-	github.com/klauspost/compress v1.15.13
+	github.com/klauspost/compress v1.17.9
 	github.com/stretchr/testify v1.8.1
 )
 
