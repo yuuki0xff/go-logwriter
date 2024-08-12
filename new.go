@@ -35,15 +35,19 @@ type OpenOption struct {
 	// BufferSize specifies the size of the buffer used for data compression and writing.
 	// If BufferSize is not a positive value, buffering is disabled.
 	BufferSize int
+	// FlushInterval specifies the interval to flush the buffer.
+	// If FlushInterval is not a positive value, buffering is disabled.
+	FlushInterval time.Duration
 }
 
 var DefaultOpenOption = OpenOption{
-	FileOrDir:  "-",
-	Prefix:     filepath.Base(os.Args[0]),
-	Suffix:     ".zst",
-	Flag:       os.O_WRONLY | os.O_APPEND | os.O_CREATE,
-	Mode:       0666,
-	BufferSize: os.Getpagesize(),
+	FileOrDir:     "-",
+	Prefix:        filepath.Base(os.Args[0]),
+	Suffix:        ".zst",
+	Flag:          os.O_WRONLY | os.O_APPEND | os.O_CREATE,
+	Mode:          0666,
+	BufferSize:    os.Getpagesize(),
+	FlushInterval: time.Second,
 }
 
 type TearDown func() error
@@ -119,12 +123,12 @@ func openSuitableLogger(filePath string, opt OpenOption) (w io.WriteCloser, err 
 		w = NewCompressedWriter(w, &ZstdAlgorithm{})
 	}
 
-	if 0 < opt.BufferSize {
+	if 0 < opt.BufferSize && 0 < opt.FlushInterval {
 		// Add write buffer to improve compression efficiency.
-		w = NewBuffer(opt.BufferSize, time.Second, w)
+		w = NewBuffer(opt.BufferSize, opt.FlushInterval, w)
 
 		// Add tick writer to flush buffer periodically and protect the thread-unsafe WriteCloser object.
-		w = NewTickWriter(w, time.Second)
+		w = NewTickWriter(w, opt.FlushInterval)
 	} else {
 		// No buffering.
 		// Add tick writer to protect the thread-unsafe WriteCloser object.
