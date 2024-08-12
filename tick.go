@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// NewTickWriter wraps the provided io.WriteCloser with a TickWriter.
+// It calls w.Write(nil) at the specified interval to flush the buffer.
+// Additionally, it protects w from concurrent Write and Close method calls.
 func NewTickWriter(w io.WriteCloser, interval time.Duration) io.WriteCloser {
 	ctx, cancel := context.WithCancel(context.Background())
 	tw := &TickWriter{
@@ -16,7 +19,9 @@ func NewTickWriter(w io.WriteCloser, interval time.Duration) io.WriteCloser {
 		ctx:      ctx,
 		cancel:   cancel,
 	}
-	go tw.worker()
+	if 0 < interval {
+		go tw.worker()
+	}
 	return tw
 }
 

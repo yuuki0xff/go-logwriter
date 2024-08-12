@@ -32,14 +32,18 @@ type OpenOption struct {
 	Flag int
 	// Default file mode.
 	Mode os.FileMode
+	// BufferSize specifies the size of the buffer used for data compression and writing.
+	// If BufferSize is not a positive value, buffering is disabled.
+	BufferSize int
 }
 
 var DefaultOpenOption = OpenOption{
-	FileOrDir: "-",
-	Prefix:    filepath.Base(os.Args[0]),
-	Suffix:    ".zst",
-	Flag:      os.O_WRONLY | os.O_APPEND | os.O_CREATE,
-	Mode:      0666,
+	FileOrDir:  "-",
+	Prefix:     filepath.Base(os.Args[0]),
+	Suffix:     ".zst",
+	Flag:       os.O_WRONLY | os.O_APPEND | os.O_CREATE,
+	Mode:       0666,
+	BufferSize: os.Getpagesize(),
 }
 
 type TearDown func() error
@@ -115,8 +119,16 @@ func openSuitableLogger(filePath string, opt OpenOption) (w io.WriteCloser, err 
 		w = NewCompressedWriter(w, &ZstdAlgorithm{})
 	}
 
-	// Add write buffer to improve compression efficiency.
-	w = NewBuffer(os.Getpagesize(), time.Second, w)
-	w = NewTickWriter(w, time.Second)
+	if 0 < opt.BufferSize {
+		// Add write buffer to improve compression efficiency.
+		w = NewBuffer(opt.BufferSize, time.Second, w)
+
+		// Add tick writer to flush buffer periodically and protect the thread-unsafe WriteCloser object.
+		w = NewTickWriter(w, time.Second)
+	} else {
+		// No buffering.
+		// Add tick writer to protect the thread-unsafe WriteCloser object.
+		w = NewTickWriter(w, 0)
+	}
 	return
 }
