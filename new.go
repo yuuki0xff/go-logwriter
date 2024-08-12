@@ -46,7 +46,7 @@ var DefaultOpenOption = OpenOption{
 	Suffix:        ".zst",
 	Flag:          os.O_WRONLY | os.O_APPEND | os.O_CREATE,
 	Mode:          0666,
-	BufferSize:    os.Getpagesize(),
+	BufferSize:    16 * (1 << 20), // 16MiB
 	FlushInterval: time.Second,
 }
 
